@@ -1,0 +1,4 @@
+parse: {(+`$")"\:'0:x)0 1 1};                                                                     / Read the input, split on ")", transpose, and duplicate the second row
+depths:{[base;next;curr] (base; next; base @ next ? curr)}.                                       / Step parent traversal: given nodes and their parents, look up the parent of the node at each point in the traversal. ` is a global parent
+p1:{+//~`=last'1_depths\ parse x};                                                                / Compute all the paths, drop the first one (of length zero), find all of them that end in a node, and sum them
+p2:{(b;n;c):parse x;D:+last'1_depths\(b;n;c);(you;san):D n ? `YOU`SAN; +/(&/you?san;&/san?you) }  / Compute all the paths, drop the first one. Sum the minimum overlap distance between SAN and YOU, and YOU and SAN
