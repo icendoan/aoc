@@ -1,4 +1,4 @@
-(s e nl) ← ⎕NGET '1.input' 
-x  ← ⍎ s[⍸s = ⎕UCS nl] ← ' ' 
-p1 ← ×/ x[⊃⍸ 2020 = x ∘.+ x]
-p2 ← ×/ x[⊃⍸⊃2020= ∘.+/3⍴⊂x]
+(s e nl) ← ⎕NGET '1.input' ⋄ x ← ⍎ s[⍸s = ⎕UCS nl] ← ' '
+f  ← {×/⍵[⊃⍸⊃2020=∘.+/⍺⍴⊂⍵]}
+p1 ← 2 f x
+p2 ← 3 f x
