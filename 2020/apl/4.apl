@@ -10,7 +10,7 @@ vals ← { ((~⍵∊' :')∧( 2|+\⍵∊' :'))⊆⍵ }
 get  ← { ⍺∊keys ⍵: ⊃(vals ⍵)[(keys ⍵) ⍳ ⍺] ⋄ '' }
 int  ← { (⍺=⍴⍵)∧(∧/⍵∊'0123456789'): ⍎⍵ ⋄ ¯1 }
 contains ← { (⍺[0]≤⍵)∧(⍺[1]≥⍵) }
-hgt  ← { (∧/'cm'=¯2↑⍵): 150 193 contains 3 int ¯2↓⍵ ⋄ 59 76 contains 2 int ¯2↓⍵ }
+hgt  ← { ('cm'≡¯2↑⍵): 150 193 contains 3 int ¯2↓⍵ ⋄ 59 76 contains 2 int ¯2↓⍵ }
 hcl  ← { (7=⍴⍵): (⍵[0] = '#') ∧ ∧/(1↓⍵)∊'01234567898abcdef' ⋄ 0 }
 chk  ← {
   byr ← 1920 2002 contains 4 int (⊂'byr') get ⍵
