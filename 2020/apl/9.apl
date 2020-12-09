@@ -1,6 +1,7 @@
 ⎕IO←0
-data ← {x←⍵⋄x[⍸x=⎕UCS 10]←' '⋄⍎x}⊃⎕NGET'../9.input'
+sums ← +\ data ← {x←⍵⋄x[⍸x=⎕UCS 10]←' '⋄⍎x}⊃⎕NGET'../9.input'
 scan ← { b ← ⌊⍺÷2 ⋄ m ← ~b↓(-b)↓(({ h ← ¯1 ↓ ⍵ ⋄ t ← ⊃ ¯1 ↑ ⍵ ⋄ t ∊ (∘.+⍨ h) × ~∘.=⍨⍳⍴h }⌺(1+⍺)) ⍵) ⋄ m / ⍺↓⍵ }
-search ← { x ← ⊃¨⍸¨p1 = (2+⍳¯2+⍴⍵) {(+/⊢⌺⍺)⍵}¨ ⊂⍵ ⋄ size ← ⊃ 2 + ⍸x≠0 ⋄ start ← x[size-2] - ⌊size÷2 ⋄ ⍵[start+⍳size] }
+check ← { ⍸p1 = sums - (-⍵)⌽sums }
+chksum ← { y ← x[z← ⊃ {(⍵≥2)/⍵} ⍸0≠⊃¨x←check¨⍳⍴⍵] ⋄ (⌈/+⌊/) ⍵[y-⍳z]}
 p1 ← 25 scan data
-p2 ← (⌈/+⌊/) search data
+p2 ← chksum data
