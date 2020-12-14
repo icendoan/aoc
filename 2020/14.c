@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <string.h>
 
-const uint64_t SIZE = ((uint64_t) 1) << 39;
+const uint64_t SIZE = ((uint64_t) 1) << 36;
 
 struct instr {
   uint8_t type;
@@ -29,7 +29,6 @@ int parse(char *text, size_t len, struct instr* arr) {
   struct instr i;
   while (start < len) {
     end = start;
-    printf("%lu\n", start);
     while (end < len && text[end] != '\n') {
       end++;
     }
@@ -38,12 +37,14 @@ int parse(char *text, size_t len, struct instr* arr) {
       i.data.zeroes = i.data.ones = 0;
       start += 7;
       while (start < end) {
-	i.data.zeroes &= text[start] == '0';
-	i.data.ones   &= text[start] == '1';
+	i.data.zeroes |= text[start] == '0';
+	i.data.ones   |= text[start] == '1';
 	i.data.zeroes <<= 1;
 	i.data.ones   <<= 1;
 	start++;
       }
+      i.data.ones>>=1;
+      i.data.zeroes>>=1;
     } else {
       start += 4; // "mem["
       i.type = 1;
@@ -68,11 +69,13 @@ int parse(char *text, size_t len, struct instr* arr) {
 }
 
 uint64_t p1(size_t len, struct instr *instrs) {
-  uint64_t total = 0, *data = mmap(NULL, SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_NORESERVE, 0, 0);
+  uint64_t total = 0, *data = mmap(NULL, SIZE<<3, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_NORESERVE, 0, 0);
   uint64_t zero, one, value;
+  uint8_t type;
   size_t i = 0;
   for (; i < len; i++) {
-    if (instrs[i].type == 0) {
+    type = instrs[i].type;
+    if (type == 0) {
       zero = instrs[i].data.zeroes;
       one  = instrs[i].data.ones;
     } else {
@@ -80,19 +83,14 @@ uint64_t p1(size_t len, struct instr *instrs) {
       value |= one;
       value &= ~zero;
       data[instrs[i].data.addr] = value;
-      printf("Setting mem[%lu] = %lu\n", instrs[i].data.addr, value);
-      printf("value: %lu\n", data[instrs[i].data.addr]);
     }
   }
 
   for (i=0;i<SIZE;i++) {
-    if (0==i%1000000) {
-      printf("%lu\n", i);
-    }
     total += data[i];
   }
 
-  munmap(data, SIZE);
+  munmap(data, SIZE<<3);
   return total;
 }
 
@@ -121,7 +119,7 @@ int main(void) {
     len += text[i] == '\n';
   }
   arr = malloc(sizeof(struct instr) * len);
-  if (parse(text, len, arr)) {
+  if (parse(text, meta.st_size, arr)) {
     printf("Could not parse input");
     return -1;
   }
