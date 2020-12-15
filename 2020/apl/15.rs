@@ -1,12 +1,5 @@
 use std::collections::BTreeMap;
 
-fn speak(latest: usize, turn: usize, spoken: &mut BTreeMap<usize, usize>) -> usize {
-    spoken
-	.insert(latest, turn)
-	.map(|previous| turn - previous)
-	.unwrap_or(0)
-}
-
 fn main() {
     let start = 6;
     let mut spoken = BTreeMap::new();
@@ -17,7 +10,11 @@ fn main() {
     spoken.insert(1, 5);
     let mut latest = 0;
     for i in start..30_000_000 {
-	latest = speak(latest, i, &mut spoken);
+
+	latest = spoken.insert(latest, i)
+	    .map(|previous| i - previous)
+	    .unwrap_or(0);
+
 	if i == 2019 {
 	    println!("p1: {}", latest);
 	}
