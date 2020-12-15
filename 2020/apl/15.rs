@@ -1,8 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 fn main() {
     let start = 6;
-    let mut spoken = BTreeMap::new();
+    let mut spoken = HashMap::new();
     spoken.insert(6, 1);
     spoken.insert(3, 2);
     spoken.insert(15, 3);
