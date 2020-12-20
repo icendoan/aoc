@@ -94,8 +94,33 @@ uint64_t p1(size_t len, struct instr *instrs) {
   return total;
 }
 
-uint64_t p2() {
-  return (uint64_t) 0;
+size_t popcnt(uint64_t x) {
+  size_t n = 0;
+  while (x > 0) {
+    n += x % 2;
+    x >>= 2;
+  }
+  return n;
+}
+
+uint64_t p2(size_t len, struct instr *instrs) {
+  uint64_t total = 0, *data = mmap(NULL, SIZE<<3, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_NORESERVE, 0, 0);
+  uint64_t mask, bitset;
+  size_t i,j,k,n;
+  for (i=0; i < len; i++) {
+    if (instrs[i].type == 0) {
+      bitset = ~(mask | ~instrs[i].data.zeroes);
+      n=((36-popcnt(mask))<<1);
+      for (j=0;j<n;j++) {
+	mask = instrs[i].data.ones;
+	for (k=0;k<36;k++) {
+	  
+	}
+      }
+    }
+  }
+  munmap(data, SIZE<<3);
+  return total;
 }
 
 int main(void) {
