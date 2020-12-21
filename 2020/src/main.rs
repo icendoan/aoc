@@ -12,10 +12,10 @@ use std::str::FromStr;
 use std::mem;
 
 fn main() {
-    //day15();
-    //day16();
-    //day17();
-    //day18();
+    day15();
+    day16();
+    day17();
+    day18();
     day19();
 }
 
@@ -199,22 +199,30 @@ fn day17() {
             .collect()
     }
 
-    let mut alive = HashSet::new();
-    let mut output = HashSet::new();
-    let mut considered = HashMap::new();
+    fn run<const N: usize>() -> usize {
+        let mut alive = HashSet::new();
+        let mut output = HashSet::new();
+        let mut considered = HashMap::new();
 
-    for (x, row) in file("17.input", &mut (), parse).unwrap().into_iter().enumerate() {
-        for y in row {
-            alive.insert([x as i64, y as i64, 0, 0]);
+        for (x, row) in file("17.input", &mut (), parse).unwrap().into_iter().enumerate() {
+            for y in row {
+                let mut base = [0;N];
+                base[0] = x as i64;
+                base[1] = y as i64;
+                alive.insert(base);
+            }
         }
+
+        for _ in 0..=6 {
+            step(&mut alive, &mut output, &mut considered);
+            mem::swap(&mut alive, &mut output);
+        }
+
+        output.len()
     }
 
-    for _ in 0..=6 {
-        step(&mut alive, &mut output, &mut considered);
-        mem::swap(&mut alive, &mut output);
-    }
-
-    println!("17: {}", output.len());
+    println!("17.1: {}", run::<3>());
+    println!("17.2: {}", run::<4>());
 }
 
 fn day18() {
@@ -325,8 +333,7 @@ fn day19() {
         Exact(String),
         All(Vec<usize>),
         Any(Vec<Vec<usize>>),
-        Rule8,
-        Rule11,
+        Rule0,
     }
 
     fn parse_spec(s: &str) -> (usize, Rule) {
@@ -346,31 +353,25 @@ fn day19() {
     fn matches_successively(s: &str, rules: &HashMap<usize, Rule>, ids: &[usize]) -> usize {
         let mut current = s;
         let mut consumed = 0;
-        println!("Attempting match of {:?}", ids);
         for id in ids {
-            println!("* submatch attempt: [{}] {}", *id, current);
             let bite = matches(current, rules, *id);
             consumed += bite;
             if bite == 0 {
-                println!("Bailing at {}", id);
                 return 0;
             }
             current = &s[consumed..]
         }
-        println!("* matched all of {:?}", ids);
         consumed
     }
 
     fn matches(s: &str, rules: &HashMap<usize, Rule>, id: usize) -> usize {
         match rules.get(&id).unwrap() {
             Rule::Exact(m) => if s.starts_with(m) {
-                println!("[{}] Exact match for {}", id, m);
                 m.len()
             } else {
                 0
             },
             Rule::Any(choices) => {
-                println!("+ Matching [{}]", id);
                 for c in choices {
                     let matched = matches_successively(s, rules, &c[..]);
                     if matched > 0 {
@@ -380,60 +381,49 @@ fn day19() {
                 0
             }
             Rule::All(ids) => {
-                println!("* Matching [{}]", id);
                 matches_successively(s, rules, &ids[..])
-            },
-            Rule::Rule8 => {
-                println!("Starting rule 8");
-                let mut consumed = 0;
+            }
+            Rule::Rule0 => {
+                let mut n = 0;
                 loop {
-                    let bite = matches(&s[consumed..], rules, 42);
-                    if bite == 0 {
-                        return consumed;
+                    let mut working = s;
+                    for _ in 1..n {
+                        let bite = matches(working, &rules, 42);
+                        if bite > 0 {
+                            working = &working[bite..];
+                        } else {
+                            return 0;
+                        }
                     }
-                    consumed += bite;
-                }
-            },
-            Rule::Rule11 => {
-                println!("Starting rule 11");
-                let mut consumed = 0;
-                let mut required = 0;
-                loop {
-                    let bite = matches(&s[consumed..], rules, 42);
-                    if bite == 0 {
-                        break
-                    }
-                    required += 1;
-                    consumed += bite;
-                }
-                consumed += matches(&s[consumed..], rules, 11);
-                for _ in 0..required {
-                    let bite = matches(&s[consumed..], rules, 31);
-                    if bite == 0 {
-                        return 0
-                    }
-                    consumed += bite;
-                }
 
-                consumed
+                    if working.is_empty() {
+                        return 0;
+                    }
+
+                    for _ in 1..n - 1 {
+                        let bite = matches(working, &rules, 31);
+                        if bite == working.len() {
+                            return s.len();
+                        } else if bite > 0 {
+                            working = &working[bite..];
+                        } else {
+                            break;
+                        }
+                    }
+                    n += 1;
+                }
             }
         }
     }
 
     let mut rules = HashMap::new();
-    file("19.rules.1.test", &mut rules, |s, m| {
+    file("19.rules.input", &mut rules, |s, m| {
         let (id, spec) = parse_spec(s);
         m.insert(id, spec);
     }).unwrap();
 
-    let strings = file("19.text.1.test", &mut (), |s, _| s.trim().to_owned()).unwrap();
-    //println!("19.1: {}", strings.iter().filter(|s| s.len() == matches(*s, &rules, 0)).count());
-
-    rules.insert(8, Rule::Rule8);
-    rules.insert(11, Rule::Rule11);
-    //for s in strings {
-    //    println!("{} {}", s.len() == matches(&s, &rules, 0), s);
-    //}
-    //println!("19.2: {:?}", strings.iter().filter(|s| s.len() == matches(*s, &rules, 0)).collect::<Vec<_>>());
-    matches("bbabbbbaabaabba", &rules, 0);
+    let strings = file("19.text.input", &mut (), |s, _| s.trim().to_owned()).unwrap();
+    println!("19.1: {}", strings.iter().filter(|s| s.len() == matches(*s, &rules, 0)).count());
+    rules.insert(0, Rule::Rule0);
+    println!("19.2: {:?}", strings.iter().filter(|s| s.len() == matches(*s, &rules, 0)).count());
 }
