@@ -2,21 +2,25 @@
 #![feature(const_generics)]
 #![feature(split_inclusive)]
 #![feature(array_chunks)]
+#![feature(bindings_after_at)]
 #![allow(dead_code, incomplete_features)]
 
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Read};
 use std::fs;
 use std::path::Path;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, BTreeMap};
 use std::str::FromStr;
 use std::mem;
+use std::fmt;
+use std::cmp;
 
 fn main() {
-    day15();
-    day16();
-    day17();
-    day18();
-    day19();
+    //day15();
+    //day16();
+    //day17();
+    //day18();
+    //day19();
+    day20();
 }
 
 fn day15() {
@@ -54,6 +58,36 @@ fn file<P: AsRef<Path>, S, T>(x: P, state: &mut S, cb: fn(&str, &mut S) -> T) ->
         s.clear();
     }
     Ok(v)
+}
+
+struct Neighbours<const N: usize> {
+    base: [i64; N],
+    counter: usize,
+}
+
+impl<const N: usize> Neighbours<N> {
+    fn new(base: [i64; N]) -> Neighbours<N> {
+        Neighbours { base, counter: 0 }
+    }
+}
+
+impl<const N: usize> Iterator for Neighbours<N> {
+    type Item = [i64; N];
+    fn next(&mut self) -> Option<[i64; N]> {
+        if self.counter >= 3usize.pow(N as u32) {
+            return None;
+        }
+        let mut place = self.counter as i64;
+        let mut offset = self.base.clone();
+
+        for i in 0..N {
+            offset[i] += (place % 3) - 1;
+            place /= 3;
+        }
+
+        self.counter += 1;
+        Some(offset)
+    }
 }
 
 fn day16() {
@@ -140,36 +174,6 @@ fn day16() {
 }
 
 fn day17() {
-    struct Neighbours<const N: usize> {
-        base: [i64; N],
-        counter: usize,
-    }
-
-    impl<const N: usize> Neighbours<N> {
-        fn new(base: [i64; N]) -> Neighbours<N> {
-            Neighbours { base, counter: 0 }
-        }
-    }
-
-    impl<const N: usize> Iterator for Neighbours<N> {
-        type Item = [i64; N];
-        fn next(&mut self) -> Option<[i64; N]> {
-            if self.counter >= 3usize.pow(N as u32) {
-                return None;
-            }
-            let mut place = self.counter as i64;
-            let mut offset = self.base.clone();
-
-            for i in 0..N {
-                offset[i] += (place % 3) - 1;
-                place /= 3;
-            }
-
-            self.counter += 1;
-            Some(offset)
-        }
-    }
-
     fn step<const N: usize>(alive: &mut HashSet<[i64; N]>,
                             output: &mut HashSet<[i64; N]>,
                             considered: &mut HashMap<[i64; N], usize>) -> usize {
@@ -206,7 +210,7 @@ fn day17() {
 
         for (x, row) in file("17.input", &mut (), parse).unwrap().into_iter().enumerate() {
             for y in row {
-                let mut base = [0;N];
+                let mut base = [0; N];
                 base[0] = x as i64;
                 base[1] = y as i64;
                 alive.insert(base);
@@ -426,4 +430,352 @@ fn day19() {
     println!("19.1: {}", strings.iter().filter(|s| s.len() == matches(*s, &rules, 0)).count());
     rules.insert(0, Rule::Rule0);
     println!("19.2: {:?}", strings.iter().filter(|s| s.len() == matches(*s, &rules, 0)).count());
+}
+
+fn day20() {
+    #[derive(Copy, Clone, PartialOrd, PartialEq, Ord, Eq, Hash)]
+    struct Mask<const N: usize>([bool; N]);
+
+    impl<const N: usize> Mask<N> {
+        fn from_chars(iter: impl Iterator<Item=char>) -> Mask<N> {
+            let mut e = [false; N];
+            for (i, c) in iter.enumerate() {
+                e[i] = c == '#';
+            }
+            Mask(e)
+        }
+
+        fn rev(mut self) -> Self {
+            self.0.reverse();
+            self
+        }
+    }
+
+    impl<const N: usize> fmt::Display for Mask<N> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            for i in 0..N {
+                write!(f, "{}", if self.0[i] { '#' } else { '.' })?;
+            }
+            Ok(())
+        }
+    }
+
+    impl<const N: usize> fmt::Debug for Mask<N> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self)
+        }
+    }
+
+    impl<const N: usize> Default for Mask<N> {
+        fn default() -> Self {
+            Mask([false; N])
+        }
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Hash)]
+    struct Tile {
+        id: usize,
+        edges: [Mask<10>; 4],
+        image: [Mask<8>; 8],
+    }
+
+    fn rotate<const N: usize>(image: &mut [Mask<N>; N]) {
+        flip(image);
+        for row in image {
+            row.0.reverse();
+        }
+    }
+
+    fn flip<const N: usize>(image: &mut [Mask<N>; N]) {
+        for i in 0..=N - 2 {
+            let (head, tail) = image.split_at_mut(i + 1);
+            let row_i = &mut head[i].0;
+            for j in (i + 1)..=N - 1 {
+                let row_j = &mut tail[j - i - 1].0;
+                mem::swap(&mut row_i[j], &mut row_j[i])
+            }
+        }
+    }
+
+    impl Tile {
+        fn rotate(&mut self) {
+            rotate(&mut self.image);
+        }
+
+        fn flip(&mut self) {
+            flip(&mut self.image);
+        }
+    }
+
+    #[derive(Copy, Clone, PartialOrd, PartialEq, Ord, Eq, Debug)]
+    enum Place {
+        Empty,
+        Filled {
+            id: usize,
+            rotation: usize,
+            flipped: bool,
+        },
+    }
+
+    impl Place {
+        fn edge(&self, tile: &Tile, i: usize) -> Mask<10> {
+            match (*self, i) {
+                (Place::Empty, _) => unreachable!("which tile is that?"),
+                (Place::Filled { id: _, rotation, flipped }, r) => {
+                    let mut arrangement = [0, 1, 2, 3];
+                    if flipped {
+                        arrangement.reverse();
+                    }
+                    for i in 0..4 {
+                        if flipped {
+                            arrangement[i] = (arrangement[i] + rotation) % 4;
+                        } else {
+                            arrangement[i] = (arrangement[i] - rotation) % 4;
+                        }
+                    }
+
+                    let i = arrangement[r];
+                    let e = tile.edges[i];
+                    match (rotation, i) {
+                        (1, i) if (if flipped { 0 } else { 1 }) == i % 2 => e.rev(),
+                        (2, _) => e.rev(),
+                        (3, i) if (if flipped { 1 } else { 0 }) == i % 2 => e.rev(),
+                        _ => e
+                    }
+                }
+            }
+        }
+    }
+
+    #[derive(Copy, Clone, PartialOrd, PartialEq, Ord, Eq, Debug)]
+    enum Constraint {
+        Unknown,
+        Edge,
+        Matches(Mask<10>),
+    }
+
+    const GRID_SIZE: usize = 12;
+    type Grid = [[Place; GRID_SIZE]; GRID_SIZE];
+
+    fn display(grid: &Grid) {
+        for i in 0..GRID_SIZE {
+            for j in 0..GRID_SIZE {
+                if let Place::Filled { id, rotation, flipped } = grid[i][j] {
+                    print!("[{} {} {}]", id, rotation, if flipped { 1 } else { 0 });
+                } else {
+                    print!("[ EMPTY  ]");
+                }
+            }
+            println!();
+        }
+    }
+
+    fn parse_tile(s: &str) -> Tile {
+        let lines: Vec<&str> = s.lines().collect();
+        let id = usize::from_str(&lines[0][5..9]).unwrap();
+        let mut image = [Mask::default(); 8];
+        for (i, m) in lines.iter()
+            .skip(2)
+            .map(|l| Mask::from_chars(l.chars().skip(1).take(8)))
+            .take(8)
+            .enumerate() {
+            image[i] = m;
+        }
+        Tile {
+            id,
+            edges: [
+                /* top    */ Mask::from_chars(lines[1].chars()),
+                /* right  */ Mask::from_chars(lines.iter().skip(1).flat_map(|s| s.chars().rev().next())),
+                /* bottom */ Mask::from_chars(lines.last().unwrap().chars()),
+                /* left   */ Mask::from_chars(lines.iter().skip(1).flat_map(|s| s.chars().next())),
+            ],
+            image,
+        }
+    }
+
+    fn constraint(grid: &Grid, tiles: &[Tile], x: isize, y: isize, r: usize) -> Constraint {
+        if x < 0 || y < 0 || x >= GRID_SIZE as isize || y >= GRID_SIZE as isize {
+            Constraint::Edge
+        } else {
+            match grid[y as usize][x as usize] {
+                Place::Empty => Constraint::Unknown,
+                p @ Place::Filled { id, rotation: _, flipped: _ } => {
+                    let tile = tiles.iter().find(|x| x.id == id).unwrap();
+                    Constraint::Matches(p.edge(tile, r))
+                }
+            }
+        }
+    }
+
+    fn check_for_monsters(image: &[Mask<{ GRID_SIZE * 8 }>; GRID_SIZE * 8]) -> usize {
+        let nessie: [Mask<20>; 3] = [
+            Mask::from_chars("..................#.".chars()),
+            Mask::from_chars("#....##....##....###".chars()),
+            Mask::from_chars(".#..#..#..#..#..#...".chars())
+        ];
+        let mut monsters_found = false;
+        let mut not_monster: [Mask<{ 8 * GRID_SIZE }>; 8 * GRID_SIZE] = image.clone();
+        for j in 0..(8 * GRID_SIZE) - 3 {
+            for i in 0..(8 * GRID_SIZE) - 20 {
+                let mut template = nessie.clone();
+                for row in 0..3 {
+                    for col in 0..20 {
+                        template[row].0[col] &= image[j + row].0[i + col];
+                    }
+                }
+                if template == nessie {
+                    monsters_found = true;
+                    for row in 0..3 {
+                        for col in 0..20 {
+                            not_monster[j + row].0[i + col] &= !nessie[row].0[col];
+                        }
+                    }
+                }
+            }
+        }
+
+        if !monsters_found {
+            return 0;
+        }
+
+        let mut not_nessie = 0;
+        for j in 0..GRID_SIZE * 8 {
+            for i in 0..GRID_SIZE * 8 {
+                if not_monster[j].0[i] {
+                    not_nessie += 1;
+                }
+            }
+        }
+
+        not_nessie
+    }
+
+    let mut f = fs::File::open("20.input").unwrap();
+    let mut input = String::new();
+    f.read_to_string(&mut input).unwrap();
+    let tiles: Vec<_> = input.split("\n\n").map(parse_tile).collect();
+    let mut grid: Grid = [[Place::Empty; GRID_SIZE]; GRID_SIZE];
+
+    let mut edge_counts = HashMap::new();
+    for t in &tiles {
+        for e in &t.edges {
+            edge_counts.entry(*e).and_modify(|x| *x += 1).or_insert(1);
+            edge_counts.entry(e.rev()).and_modify(|x| *x += 1).or_insert(1);
+        }
+    }
+
+    let mut available: BTreeMap<usize, Tile> = BTreeMap::new();
+    let mut tiles_by_id = HashMap::new();
+    for t in &tiles {
+        available.insert(t.id, t.clone());
+        tiles_by_id.insert(t.id, t.clone());
+    }
+
+    let mut edge_checksum = 1;
+    for t in &tiles {
+        let edges: Vec<_> = t.edges.iter().map(|e| if 1 == *edge_counts.get(e).unwrap() && 1 == *edge_counts.get(&e.rev()).unwrap() { 1 } else { 0 }).collect();
+        if edges.iter().sum::<usize>() == 2 {
+            edge_checksum *= t.id;
+            if grid[0][0] == Place::Empty {
+                grid[0][0] = match edges[..] {
+                    //[1, 1, 0, 0] => Place::Filled { id: t.id, rotation: 0, flipped: false  },
+                    [0, 1, 1, 0] => Place::Filled { id: t.id, rotation: 2, flipped: false },
+                    [0, 0, 1, 1] => Place::Filled { id: t.id, rotation: 1, flipped: false },
+                    //[1, 0, 0, 1] => Place::Filled { id: t.id, rotation: 0, flipped: false },
+                    _ => unreachable!()
+                };
+                available.remove(&t.id);
+            }
+        }
+    }
+
+    for j in 0..GRID_SIZE {
+        for i in 0..GRID_SIZE {
+            if Place::Empty != grid[j][i] {
+                continue;
+            }
+
+            let constraints = [
+                constraint(&grid, &tiles, i as isize, j as isize - 1, 2),
+                constraint(&grid, &tiles, i as isize + 1, j as isize, 3),
+                constraint(&grid, &tiles, i as isize, j as isize + 1, 0),
+                constraint(&grid, &tiles, i as isize - 1, j as isize, 1),
+            ];
+
+            for t in available.values() {
+                for rotation in 0..4 {
+                    for flipped in [false, true].iter().copied() {
+                        let place = Place::Filled { id: t.id, rotation, flipped };
+                        let mut satisfied = true;
+                        for k in 0..4 {
+                            let edge = place.edge(t, k);
+                            let is_border = 1 == *edge_counts.get(&edge).unwrap() && 1 == *edge_counts.get(&edge.rev()).unwrap();
+                            satisfied &= match constraints[k] {
+                                Constraint::Unknown => !is_border,
+                                Constraint::Edge => is_border,
+                                Constraint::Matches(m) => m == edge,
+                            };
+
+                            if !satisfied {
+                                break;
+                            }
+                        }
+
+                        if satisfied {
+                            grid[j][i] = place;
+                        }
+                    }
+                }
+            }
+
+            if let Place::Filled { id, rotation: _, flipped: _ } = grid[j][i] {
+                available.remove(&id);
+            } else {
+                println!("Could not fill tile at ({}, {}), constraints were: {:?}", j, i, constraints);
+                panic!();
+            }
+        }
+    }
+    display(&grid);
+    println!("20.1: {}", edge_checksum);
+
+    let mut image: [Mask<{ 8 * GRID_SIZE }>; 8 * GRID_SIZE] = [Mask::default(); 8 * GRID_SIZE];
+    for j in 0..GRID_SIZE {
+        for i in 0..GRID_SIZE {
+            let id = match grid[j][i] {
+                Place::Empty => panic!("I thought the grid was full!"),
+                Place::Filled { id, .. } => id
+            };
+            let mut tile = tiles_by_id.get(&id).unwrap().clone();
+            match grid[j][i] {
+                Place::Filled { rotation, flipped, .. } => {
+                    if flipped {
+                        tile.flip();
+                    }
+                    for _ in 0..rotation {
+                        tile.rotate();
+                    }
+                }
+                _ => panic!("AAAAAAAA!")
+            }
+            for row in 0..8 {
+                let image_span: &mut [bool] = &mut image[j * 8 + row].0[8 * i..8 * (i + 1)];
+                image_span.copy_from_slice(&tile.image[row].0);
+            }
+        }
+    }
+
+    let mut choppiness = 0;
+    for flipped in &[false, true] {
+        let mut img = image.clone();
+        if *flipped {
+            flip(&mut img);
+        }
+        choppiness = cmp::max(choppiness, check_for_monsters(&img));
+        for _ in 0..3 {
+            rotate(&mut img);
+            choppiness = cmp::max(choppiness, check_for_monsters(&img));
+        }
+    }
+    println!("20.2: {}", choppiness);
 }
