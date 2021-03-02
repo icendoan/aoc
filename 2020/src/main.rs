@@ -6,21 +6,20 @@
 #![allow(dead_code, incomplete_features)]
 
 use std::io::{self, BufRead, BufReader, Read};
-use std::fs;
+use std::{fs, mem, fmt, cmp};
 use std::path::Path;
-use std::collections::{HashMap, HashSet, BTreeMap};
+use std::collections::{HashMap, HashSet, BTreeMap, VecDeque};
 use std::str::FromStr;
-use std::mem;
-use std::fmt;
-use std::cmp;
 
 fn main() {
-    //day15();
-    //day16();
-    //day17();
-    //day18();
-    //day19();
+    day15();
+    day16();
+    day17();
+    day18();
+    day19();
     day20();
+    day21();
+    day22();
 }
 
 fn day15() {
@@ -31,7 +30,7 @@ fn day15() {
     spoken.insert(15, 3);
     spoken.insert(13, 4);
     spoken.insert(1, 5);
-    let mut latest = 6;
+    let mut latest = 0;
     for i in start..30_000_000 {
         latest = spoken.insert(latest, i)
             .map(|previous| i - previous)
@@ -736,7 +735,6 @@ fn day20() {
             }
         }
     }
-    display(&grid);
     println!("20.1: {}", edge_checksum);
 
     let mut image: [Mask<{ 8 * GRID_SIZE }>; 8 * GRID_SIZE] = [Mask::default(); 8 * GRID_SIZE];
@@ -778,4 +776,136 @@ fn day20() {
         }
     }
     println!("20.2: {}", choppiness);
+}
+
+fn day21() {
+    #[derive(Clone, Debug)]
+    struct Food {
+        ingredients: HashSet<String>,
+        allergens: HashSet<String>,
+    }
+
+    fn parse_food(s: &str) -> Food {
+        let mut ingredients = HashSet::new();
+        let mut allergens = HashSet::new();
+        let end = s.find('(').unwrap_or(s.len());
+        let (head, tail) = s.split_at(end);
+        for i in head.split_whitespace() {
+            ingredients.insert(i.trim().to_owned());
+        }
+        if !tail.is_empty() {
+            for mut a in tail.split_whitespace() {
+                if a.starts_with('(') {
+                    a = &a[1..];
+                }
+                if a.ends_with(')') || a.ends_with(',') {
+                    a = &a[..a.len() - 1];
+                }
+
+                if a != "contains" {
+                    allergens.insert(a.trim().to_owned());
+                }
+            }
+        }
+        Food { allergens, ingredients }
+    }
+
+    let mut foods = vec!();
+    file("21.input", &mut foods, |s, state| state.push(parse_food(s))).unwrap();
+    let mut allergens = HashSet::new();
+    let mut allergen_map: HashMap<String, String> = HashMap::new();
+    for food in &foods {
+        allergens.extend(food.allergens.iter());
+    }
+    while allergen_map.len() < allergens.len() {
+        for a in allergens.iter() {
+            if allergen_map.contains_key(*a) {
+                continue;
+            }
+
+            let with_allergen: Vec<_> = foods.iter().filter(|f| f.allergens.contains(*a)).collect();
+            let mut iter = with_allergen.iter();
+            let mut possible = match iter.next() {
+                Some(f) => f.ingredients.iter().filter(|a| !allergen_map.contains_key(*a)).cloned().collect(),
+                None => {
+                    println!("{} has no ingredients?!", a);
+                    HashSet::new()
+                }
+            };
+            while let Some(f) = iter.next() {
+                possible = possible.intersection(&f.ingredients).cloned().collect();
+            }
+
+            for k in allergen_map.keys() {
+                possible.remove(&k[..]);
+            }
+
+            if 1 == possible.len() {
+                let ingredient = possible.into_iter().next().unwrap();
+                allergen_map.insert(ingredient, (*a).to_owned());
+            }
+        }
+    }
+
+    println!("21.1: {}", foods.iter().map(|f| f.ingredients.iter().filter(|x| !allergen_map.contains_key(*x)).count()).sum::<usize>());
+    let mut has_allergens: Vec<_> = allergen_map.keys().cloned().collect();
+    has_allergens.sort_by(|x, y| allergen_map.get(x).unwrap().cmp(allergen_map.get(y).unwrap()));
+    println!("21.2: {}", has_allergens.join(","))
+}
+
+fn day22() {
+
+    fn score(i: impl DoubleEndedIterator<Item=u8>) -> u64 {
+        i.rev().enumerate().map(|(i, v)| ((i+1) * v as usize) as u64).sum()
+    }
+
+    fn run(player1: &[u8], player2: &[u8]) -> u64 {
+        let mut p1: VecDeque<_> = player1.iter().copied().collect();
+        let mut p2: VecDeque<_> = player2.iter().copied().collect();
+        while !p1.is_empty() && !p2.is_empty() {
+            let d1 = p1.pop_front().unwrap();
+            let d2 = p2.pop_front().unwrap();
+
+            if d1 > d2 {
+                p1.push_back(d1);
+                p1.push_back(d2);
+            } else if d2 > d1 {
+                p2.push_back(d2);
+                p2.push_back(d1);
+            } else {
+                unreachable!()
+            }
+        }
+
+        if p1.is_empty() {
+            score(p2.into_iter())
+        } else {
+            score(p1.into_iter())
+        }
+    }
+
+    fn run_recursively(player1: &[u8], player2: &[u8]) -> u64 {
+        let mut p1: VecDeque<_> = player1.iter().copied().collect();
+        let mut p2: VecDeque<_> = player2.iter().copied().collect();
+        let mut rounds: HashSet<(VecDeque<u8>, VecDeque<u8>)> = HashSet::new();
+        let state = (p1.clone(), p2.clone());
+        if rounds.contains(&state) {
+            return score(p1.into_iter())
+        } else {
+            rounds.insert(state);
+        }
+
+        if p1.is_empty() {
+            
+        }
+        0
+    }
+
+    let mut f = fs::File::open("22.input").unwrap();
+    let mut s = String::new();
+    f.read_to_string(&mut s).unwrap();
+    let (you, crab) = s.split_once("\n\n").unwrap();
+    let player1: Vec<u8> = you.lines().skip(1).map(u8::from_str).collect::<Result<_,_>>().unwrap();
+    let player2: Vec<u8> = crab.lines().skip(1).map(u8::from_str).collect::<Result<_,_>>().unwrap();
+    println!("22.1: {}", run(&player1[..], &player2[..]));
 }
