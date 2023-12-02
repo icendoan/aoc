@@ -5,8 +5,8 @@ Split ←  (⊢-˜+`×¬)⊸⊔ # from bqncrate, splits on a boolean mask left a
 Clean ← (','≠⊢)⊸/ ⚇ ¯3 # Remove any trailing commas
 
 games ←  ((0<≠¨)⊸/ ' '⊸= Split ⊢)⚇ ¯2 (';'⊸= Split ⊢)⚇ ¯1 StripHeaders text # Split into games and turns
-games ← ⍉∘(∘‿2⊸⥊ ) ⚇ 0‿¯2 Clean games # Remove commas, shape into arrays of [counts, colours]
-games ←  •ParseFloat¨⌾⊏⚇ ¯2 games # Convert the counts to numbers
+games ↩  ⍉∘(∘‿2⊸⥊ ) ⚇ 0‿¯2 Clean games # Remove commas, shape into arrays of [counts, colours]
+games ↩  •ParseFloat¨⌾⊏⚇ ¯2 games # Convert the counts to numbers
 
 # Now each game looks like this:
 # ┌─                                                       
@@ -24,3 +24,5 @@ GetCounts ←  (colours ⊐⚇ 2˜ 1 ⊏¨ ⊢) ⊏⟜(∾ ⟜0‿0‿0)⚇ 1 �
 
 p1 ←  +´ 1 + / CheckCount¨ games # Sum the indices (starting at 1) of the games that pass CheckCount
 p2 ←  +´ ×´¨ (⌈˝∘> GetCounts)¨ games # Get the max number of cubes in each game, take their row-wise product, and sum
+
+•Show p1‿p2
