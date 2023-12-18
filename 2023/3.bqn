@@ -1,4 +1,4 @@
-grid ←  > •file.Lines "3.in"
+grid ←  > •file.Lines "3.test"
 digits ←  '0' + ↕ 10
 
 # Part 1
