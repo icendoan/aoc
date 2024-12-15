@@ -1,6 +1,6 @@
 garden ← > •file.Lines "12.in"
 class  ← 1+↕∘≠⌾⥊ garden
-shifts← ⟨»˘,»,«˘,«⟩
+shifts ← ⟨»˘,»,«˘,«⟩
 Adj    ← Shifts {𝕎𝕩}¨ <
 mask   ← (Adj = <) garden
 Merge  ← ⊢ ⌈´ Adj × Mask
