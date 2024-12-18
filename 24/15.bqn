@@ -3,10 +3,11 @@ cut  ← ⊑/0=≠¨text
 map  ←     > cut ↑ text
 cmds ← ∾ (1+cut) ↓ text
 dir  ← "v^<>"
+h‿w  ← ≢ map
 Step ← {r←1+¯1⊑/1∾(∧` (1⌾⊑) 𝕩∊"O[]")∧'.'=«𝕩⋄¯1⊸⌽⌾(r↑⊢)𝕩}
 View ← { map 𝕊 c:
   y‿x ← (≠∘⊏(⌊∘÷˜⋈|)⊑∘/∘⥊) map = '@'
-  f   ← (⊑ dir ⊐ c) ⊑ ⟨x⊸⊏˘,x⊸⊏˘,y⊸⊏,y⊸⊏⟩
+  F   ← {2>⊑dir⊐c? (w×↕h)+x;(↕w)+w×y} ⊏ ⥊ # thanks dzaima!
   g   ← (⊑ dir ⊐ c) ⊑ ⟨y⊸↓,⌽(y+1)⊸↑,⌽(x+1)⊸↑,x⊸↓⟩
   Step⌾G⌾F map
 }
@@ -33,14 +34,10 @@ WStep ← {
     knock ← next ⊑ map
     swaps ↩ swaps ∾ < 𝕩 ⋈¨○(moves⊸/) next
     boxes ← (knock ∊ "[]") / next
-    left  ← (knock = '[')⊸/ 0‿1  +⚇1 next
-    right ← (knock = ']')⊸/ 0‿¯1 +⚇1 next
+    left  ← (knock = '[')⊸/ 0‿1⊸+¨ next
+    right ← (knock = ']')⊸/ 0‿¯1⊸+¨ next
     ∧ ⍷ next ∾ left ∾ right
   } _fix ⋈ start
-  # Compute the bounding box of the changing cells
-  minX‿maxX ← x (⌊´⋈⌈´) 1 ⊑¨ surface
-  minY‿maxY ← y (⌊´⋈⌈´)   ⊑¨ surface
-  Box ← (<minX + ↕(1+maxX) - minX) ⊏˘ (minY + ↕(1+maxY) - minY) ⊏ ⊢
   # If the surface is just '.' then the move can happen
   { "." ≡ ⍷ surface ⊑ map
     ? { 𝕊⟨⟩: map; 𝕊𝕩: map ⌽⌾(𝕩⊑⊢)↩ }¨ ⌽∾swaps ⋄ map
